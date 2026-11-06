@@ -16,8 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>. */
 #include <stdio.h>
+#include <stdlib.h>
 
-#define MAX_LOOPS 20
+#define BUFFER_SIZE 256
+#define MAX_CODE_LENGHT 500
 
 typedef struct
 {
@@ -25,25 +27,33 @@ typedef struct
     int end;
 } loop;
 
-void setupLoops(const unsigned char code[500], loop loops[MAX_LOOPS],
-    int *loopsSize);
+int countLoops(const unsigned char code[]);
+void setupLoops(const unsigned char code[], loop *loops,
+    int loopsSize);
 int getLoopEnd(loop loops[], int loopSize, int start);
 int getLoopStart(loop loops[], int loopSize, int end);
 
 int main(void)
 {
-    unsigned char buffer[256] = {0};
+    unsigned char buffer[BUFFER_SIZE] = {0};
 
     unsigned char cursor = 0;
-    unsigned char code[500];
+    unsigned char code[MAX_CODE_LENGHT];
 
-    loop loops[MAX_LOOPS];
-    int loopsSize = 0;
+    loop *loops;
+    int loopsSize;
 
     int iCode = 0;
 
-    scanf("%500s", code);
-    setupLoops(code, loops, &loopsSize);
+    scanf("%499s", code);
+
+    loopsSize = countLoops(code);
+    if (loopsSize == -1){
+        printf("ERROR: Invalid code\n");
+        return 1;
+    }
+    loops = (loop*) malloc(loopsSize * sizeof(loop));
+    setupLoops(code, loops, loopsSize);
 
     while (code[iCode] != '\0')
     {
@@ -84,30 +94,62 @@ int main(void)
     return 0;
 }
 
-/*  Toma el codigo cargado en memoria (code) y guarda las posiciones de
-    los pares de corchetes en la lista loops. */
-void setupLoops(const unsigned char code[500], loop loops[MAX_LOOPS],
-    int *loopsSize)
+/*  Toma el codigo cargado en memoria (code) y devuelve el numero de
+    bucles que contiene. En caso de que lo bucles esten mal definidos,
+    devuelve -1 */
+int countLoops(const unsigned char code[500])
 {
     int iCode = 0;
     int iLoops = 0;
-    *loopsSize = 0;
+    int loopsCount = 0;
 
-    while (
-        iLoops > -1 && iLoops < MAX_LOOPS &&
-        code[iCode] != '\0'
-    )
+    while (code[iCode] != '\0')
     {
         if (code[iCode] == '[')
         {
-            loops[iLoops].start = iCode;
+            loopsCount++;
             iLoops++;
-            *loopsSize += 1;
         }
-        else if (code[iCode] == ']' && iLoops > 0)
-        {
+        else if (code[iCode] == ']')
             iLoops--;
-            loops[iLoops].end = iCode;
+
+        if (iLoops < 0)
+            return -1;
+
+        iCode++;
+    }
+    if (iLoops != 0)
+        return -1;
+
+    return loopsCount;
+}
+
+/*  Toma el codigo cargado en memoria (code) y guarda las posiciones de
+    los pares de corchetes en la lista loops.
+    [!] El codigo ha de tener los bucles bien definidos, y se ha de
+    conocer de antemano el numero de bulces (usar countLoops() para
+    ambas condiciones) */
+void setupLoops(const unsigned char code[500], loop *loops,
+    int loopsSize)
+{
+    int iCode = 0;
+    int iClosedLoops = 0;
+    int iOpenLoops = loopsSize-1;
+
+    while (iClosedLoops < loopsSize)
+    {
+        if (code[iCode] == '[')
+        {
+            loops[iOpenLoops].start = iCode;
+            iOpenLoops--;
+        }
+        else if (code[iCode] == ']')
+        {
+            iOpenLoops++;
+            loops[iOpenLoops].end = iCode;
+            loops[iClosedLoops] = loops[iOpenLoops];
+            iClosedLoops++;
+            
         }
         iCode++;
     }
