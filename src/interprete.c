@@ -30,8 +30,8 @@ typedef struct
 int countLoops(const unsigned char code[]);
 void setupLoops(const unsigned char code[], loop *loops,
     int loopsSize);
-int getLoopEnd(loop loops[], int loopSize, int start);
-int getLoopStart(loop loops[], int loopSize, int end);
+int getLoopEnd(loop loops[], int loopsSize, int start);
+int getLoopStart(loop loops[], int loopsSize, int end);
 
 int main(void)
 {
@@ -89,7 +89,9 @@ int main(void)
         }
         iCode++;
     }
+
     printf("\n");
+    free(loops);
 
     return 0;
 }
@@ -129,8 +131,7 @@ int countLoops(const unsigned char code[500])
     [!] El codigo ha de tener los bucles bien definidos, y se ha de
     conocer de antemano el numero de bulces (usar countLoops() para
     ambas condiciones) */
-void setupLoops(const unsigned char code[500], loop *loops,
-    int loopsSize)
+void setupLoops(const unsigned char code[500], loop *loops, int loopsSize)
 {
     int iCode = 0;
     int iClosedLoops = 0;
@@ -160,12 +161,12 @@ void setupLoops(const unsigned char code[500], loop *loops,
     posicion de su respectivo cierre de corchete ']'.
     [!] Debe de ejecutarse antes setupLoops para conocer la estructura de
     bucles del codigo. */
-int getLoopEnd(loop loops[], int loopSize, int start)
+int getLoopEnd(loop loops[], int loopsSize, int start)
 {
     int i = 0;
     int end = -1;
 
-    while(end == -1 && i < loopSize)
+    while(end == -1 && i < loopsSize)
     {
         if (loops[i].start == start)
             end = loops[i].end;
@@ -178,12 +179,12 @@ int getLoopEnd(loop loops[], int loopSize, int start)
     posicion de su respectiva apertura de corchete '['.
     [!] Debe de ejecutarse antes setupLoops para conocer la estructura de
     bucles del codigo. */
-int getLoopStart(loop loops[], int loopSize, int end)
+int getLoopStart(loop loops[], int loopsSize, int end)
 {
     int i = 0;
     int start = -1;
 
-    while(start == -1 && i < loopSize)
+    while(start == -1 && i < loopsSize)
     {
         if (loops[i].end == end)
             start = loops[i].start;
