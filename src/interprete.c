@@ -19,7 +19,6 @@
 #include <stdlib.h>
 
 #define BUFFER_SIZE 256
-#define MAX_CODE_LENGHT 500
 
 typedef struct
 {
@@ -33,19 +32,49 @@ void setupLoops(const unsigned char code[], loop *loops,
 int getLoopEnd(loop loops[], int loopsSize, int start);
 int getLoopStart(loop loops[], int loopsSize, int end);
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    unsigned char buffer[BUFFER_SIZE] = {0};
+    FILE *f_in;
+    unsigned char *code;
+    long codeSize = 0;
+    int iCode = 0;
 
-    unsigned char cursor = 0;
-    unsigned char code[MAX_CODE_LENGHT];
+    unsigned char buffer[BUFFER_SIZE] = {0};
+    unsigned int cursor = 0;
 
     loop *loops;
     int loopsSize;
 
-    int iCode = 0;
+    if (argc == 1)
+    {
+        printf("ERROR: No arguments have been passed\n");
+        return 1;
+    }
 
-    scanf("%499s", code);
+    f_in = fopen(argv[1], "rb");
+    if (f_in == NULL)
+    {
+        printf("ERROR: Couldn't open file '%s'\n", argv[1]);
+        return 1;
+    }
+    fseek(f_in, 0, SEEK_END);
+    codeSize = ftell(f_in) * sizeof(char);
+    rewind(f_in);
+    code = (unsigned char*) malloc(codeSize);
+    if (code == NULL)
+    {
+        printf("ERROR(Internal): Couldn't allocate the '%ld' bytes \
+            required to load into memory the code in '%s'\n",
+            codeSize, argv[1]);
+        return 1;
+    }
+    if (fread(code, codeSize, 1, f_in) != 1)
+    {
+        printf("ERROR(Internal): Couldn't load into memory the code in \
+            '%s'\n", argv[1]);
+        return 1;
+    }
+    fclose(f_in);
 
     loopsSize = countLoops(code);
     if (loopsSize == -1){
@@ -91,6 +120,7 @@ int main(void)
     }
 
     printf("\n");
+    free(code);
     free(loops);
 
     return 0;
@@ -99,7 +129,7 @@ int main(void)
 /*  Toma el codigo cargado en memoria (code) y devuelve el numero de
     bucles que contiene. En caso de que lo bucles esten mal definidos,
     devuelve -1 */
-int countLoops(const unsigned char code[500])
+int countLoops(const unsigned char code[])
 {
     int iCode = 0;
     int iLoops = 0;
@@ -131,7 +161,7 @@ int countLoops(const unsigned char code[500])
     [!] El codigo ha de tener los bucles bien definidos, y se ha de
     conocer de antemano el numero de bulces (usar countLoops() para
     ambas condiciones) */
-void setupLoops(const unsigned char code[500], loop *loops, int loopsSize)
+void setupLoops(const unsigned char code[], loop *loops, int loopsSize)
 {
     int iCode = 0;
     int iClosedLoops = 0;
@@ -150,7 +180,7 @@ void setupLoops(const unsigned char code[500], loop *loops, int loopsSize)
             loops[iOpenLoops].end = iCode;
             loops[iClosedLoops] = loops[iOpenLoops];
             iClosedLoops++;
-            
+
         }
         iCode++;
     }
