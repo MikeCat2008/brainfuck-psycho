@@ -18,19 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 30000
 
-typedef struct
-{
-    int start;
-    int end;
-} loop;
-
-int countLoops(const unsigned char code[]);
-void setupLoops(const unsigned char code[], loop *loops,
-    int loopsSize);
-int getLoopEnd(loop loops[], int loopsSize, int start);
-int getLoopStart(loop loops[], int loopsSize, int end);
+int goToLoopStart(unsigned char *code, int iCode);
+int goToLoopEnd(unsigned char *code, int iCode);
 
 int main(int argc, char *argv[])
 {
@@ -42,8 +33,7 @@ int main(int argc, char *argv[])
     unsigned char buffer[BUFFER_SIZE] = {0};
     unsigned int cursor = 0;
 
-    loop *loops;
-    int loopsSize;
+    //1. Cargar el codigo en memoria
 
     if (argc == 1)
     {
@@ -76,13 +66,7 @@ int main(int argc, char *argv[])
     }
     fclose(f_in);
 
-    loopsSize = countLoops(code);
-    if (loopsSize == -1){
-        printf("ERROR: Invalid code\n");
-        return 1;
-    }
-    loops = (loop*) malloc(loopsSize * sizeof(loop));
-    setupLoops(code, loops, loopsSize);
+    //2. Ejecucion del programa
 
     while (code[iCode] != '\0')
     {
@@ -95,18 +79,20 @@ int main(int argc, char *argv[])
                 buffer[cursor]--;
                 break;
             case '>':
-                cursor++;
+                if (cursor < BUFFER_SIZE - 1)
+                    cursor++;
                 break;
             case '<':
-                cursor--;
+                if (cursor > 0)
+                    cursor--;
                 break;
             case '[':
                 if (buffer[cursor] == 0)
-                    iCode = getLoopEnd(loops, loopsSize, iCode);
+                    iCode = goToLoopEnd(code,iCode);
                 break;
             case ']':
                 if (buffer[cursor] != 0)
-                    iCode = getLoopStart(loops, loopsSize, iCode);
+                    iCode = goToLoopStart(code,iCode);
                 break;
             case '.':
                 printf("%c",buffer[cursor]);
@@ -116,109 +102,59 @@ int main(int argc, char *argv[])
                 scanf(" %c", &buffer[cursor]);
                 break;
         }
+        if (iCode == -1)
+        {
+            printf("ERROR: Invalid code\n");
+            return -1;
+        }
+
         iCode++;
     }
 
     printf("\n");
     free(code);
-    free(loops);
 
     return 0;
 }
 
-/*  Toma el codigo cargado en memoria (code) y devuelve el numero de
-    bucles que contiene. En caso de que lo bucles esten mal definidos,
-    devuelve -1 */
-int countLoops(const unsigned char code[])
-{
-    int iCode = 0;
-    int iLoops = 0;
-    int loopsCount = 0;
-
-    while (code[iCode] != '\0')
+/*
+    Mueve el cursor del codigo (iCode) al '[' correspondiente al ']' sobre
+    el que se encuentra iCode
+    [!] iCursor debe encontrarse sobre un ']'*/
+int goToLoopStart(unsigned char *code, int iCode){
+    int loopDepth = 1;
+    int newICode = iCode;
+    while (loopDepth > 0)
     {
-        if (code[iCode] == '[')
-        {
-            loopsCount++;
-            iLoops++;
-        }
-        else if (code[iCode] == ']')
-            iLoops--;
-
-        if (iLoops < 0)
+        newICode--;
+        if (newICode < 0)
             return -1;
 
-        iCode++;
+        if (code[newICode] == ']')
+            loopDepth++;
+        else if (code[newICode] == '[')
+            loopDepth--;
     }
-    if (iLoops != 0)
-        return -1;
-
-    return loopsCount;
+    return newICode;
 }
 
-/*  Toma el codigo cargado en memoria (code) y guarda las posiciones de
-    los pares de corchetes en la lista loops.
-    [!] El codigo ha de tener los bucles bien definidos, y se ha de
-    conocer de antemano el numero de bulces (usar countLoops() para
-    ambas condiciones) */
-void setupLoops(const unsigned char code[], loop *loops, int loopsSize)
-{
-    int iCode = 0;
-    int iClosedLoops = 0;
-    int iOpenLoops = loopsSize-1;
-
-    while (iClosedLoops < loopsSize)
+/*
+    Mueve el cursor del codigo (iCode) al ']' correspondiente al '[' sobre
+    el que se encuentra iCode
+    [!] iCursor debe encontrarse sobre un '['*/
+int goToLoopEnd(unsigned char *code, int iCode){
+    int loopDepth = 1;
+    int newICode = iCode;
+    while (loopDepth > 0)
     {
-        if (code[iCode] == '[')
-        {
-            loops[iOpenLoops].start = iCode;
-            iOpenLoops--;
-        }
-        else if (code[iCode] == ']')
-        {
-            iOpenLoops++;
-            loops[iOpenLoops].end = iCode;
-            loops[iClosedLoops] = loops[iOpenLoops];
-            iClosedLoops++;
+        newICode++;
+        if (newICode > BUFFER_SIZE - 1)
+            return -1;
 
-        }
-        iCode++;
+        if (code[newICode] == ']')
+            loopDepth--;
+        else if (code[newICode] == '[')
+            loopDepth++;
     }
-    return;
-}
-
-/*  A partir de la posicion de una apertura de corchete '[', devuelve la
-    posicion de su respectivo cierre de corchete ']'.
-    [!] Debe de ejecutarse antes setupLoops para conocer la estructura de
-    bucles del codigo. */
-int getLoopEnd(loop loops[], int loopsSize, int start)
-{
-    int i = 0;
-    int end = -1;
-
-    while(end == -1 && i < loopsSize)
-    {
-        if (loops[i].start == start)
-            end = loops[i].end;
-        i++;
-    }
-    return end;
-}
-
-/*  A partir de la posicion de un cierre de corchete ']', devuelve la
-    posicion de su respectiva apertura de corchete '['.
-    [!] Debe de ejecutarse antes setupLoops para conocer la estructura de
-    bucles del codigo. */
-int getLoopStart(loop loops[], int loopsSize, int end)
-{
-    int i = 0;
-    int start = -1;
-
-    while(start == -1 && i < loopsSize)
-    {
-        if (loops[i].end == end)
-            start = loops[i].start;
-        i++;
-    }
-    return start;
+    return newICode;
 }
